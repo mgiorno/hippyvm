@@ -493,13 +493,26 @@ class Interpreter(object):
             name = name[1:]
         if not name:
             return None
+        frame = self.topframeref()
+        if frame is not None:
+            py_scope = frame.bytecode.py_scope
+            if py_scope is not None:
+                ph_v = py_scope.ph_lookup_local_recurse(name)
+                if ph_v is not None: return ph_v
+                kls = self._class_get(name)
+                if kls is not None:
+                    return kls
+                if autoload:
+                    kls = self._autoload(name)
+                    if kls is not None: return kls
+                return py_scope.ph_lookup_global(name)
         kls = self._class_get(name)
-        if kls is None:
-            if autoload:
-                kls = self._autoload(name)
-            else:
-                return None
-        return kls
+        if kls is not None:
+            return kls
+        if autoload:
+            return self._autoload(name)
+        else:
+            return None
 
     def _get_self_class(self):
         contextclass = self.get_contextclass()
