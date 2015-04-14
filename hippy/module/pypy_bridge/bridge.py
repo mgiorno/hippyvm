@@ -22,6 +22,7 @@ from pypy.interpreter.baseobjspace import W_Root as Wpy_Root
 from pypy.interpreter.function import Function as Py_Function
 from pypy.interpreter.argument import Arguments
 from pypy.module.__builtin__ import compiling as py_compiling
+from pypy.objspace.std.typeobject import W_TypeObject
 
 from rpython.rlib import jit
 
@@ -194,39 +195,44 @@ def import_py_mod(interp, modname):
     return w_obj.to_php(interp)
 
 def _find_static_py_meth(interp, class_name, meth_name):
-    # first look in PHP scope for a class of this name
-    return None # disable for the time being
-    # XXX it seems very unlikely that this scoping mechanism is defensible
-#    kls = interp.lookup_class_or_intf(class_name)
-#    if kls is not None:
-#        ctx_kls = interp.get_contextclass()
-#        meth = kls.locate_static_method(meth_name, ctx_kls, True)
-#        if meth is None or not isinstance(meth.method_func, W_PyMethodFuncAdapter):
-#            return None
-#        else:
-#            return meth.method_func.get_wrapped_py_obj()
-#    else:
-#        # otherwise we have to search lexical scopes upwards for the class
-#        py_scope = interp.get_current_bytecode().py_scope
-#        if py_scope is not None:
-#            from pypy.objspace.std.typeobject import W_TypeObject
-#            kls = py_scope.py_lookup(class_name)
-#            if kls is None:
-#                return None
-#            elif isinstance(kls, W_TypeObject):
-#                meth = kls.lookup(meth_name)
-#                from pypy.interpreter.function import StaticMethod
-#                if isinstance(meth, StaticMethod):
-#                    w_py_func = meth.w_function
-#                    assert isinstance(w_py_func, Py_Function)
-#                    return w_py_func
-#                else:
-#                    return None
-#            else:
-#                # should not be reachable.
-#                # If there was a PHP class we would have found it in the
-#                # first case.
-#                assert False
+    """Here we aim to lookup a static method given a class name
+    and a method name. There are two success cases: 1) the class is a
+    PHP class and the method is a static method written in Python; 2)
+    The class is a Python class with a static method written in Python.
+
+    We try case 1, before falling back onto case 2, where we use our regular
+    cross-language scoping semantics to find the class, and then its method.
+    In this case, we recurse up the nested scopes as far as is needed.
+    """
+
+    # First look in PHP scope for a class of this name
+    w_php_kls = interp.lookup_class_or_intf(class_name)
+    if w_php_kls is not None:
+        # We found a PHP class of the correct name.
+        ctx_kls = interp.get_contextclass()
+        meth = w_php_kls.locate_static_method(meth_name, ctx_kls, True)
+        if meth is None or not isinstance(meth.method_func, W_PyMethodFuncAdapter):
+            return None # XXX separate out case that the func is a PHP method
+        else:
+            return meth.method_func.get_wrapped_py_obj()
+    else:
+        # The class is not found in PHP, so use regular cross language scoping
+        # rules to find the Python class of this name.
+        php_scope = PHP_Scope(interp, interp.topframeref())
+        w_py_kls = php_scope.py_lookup_local_recurse(class_name)
+        if w_py_kls is None:
+            return None # class not defined in Python either
+        else:
+            # Good, we found a Python class, now lookup the method
+            assert isinstance(w_py_kls, W_TypeObject)
+            w_py_meth = w_py_kls.lookup(meth_name)
+            from pypy.interpreter.function import StaticMethod
+            if isinstance(w_py_meth, StaticMethod):
+                w_py_func = w_py_meth.w_function
+                assert isinstance(w_py_func, Py_Function)
+                return w_py_func
+            else:
+                return None # Could not find the method
 
 @wrap(['interp', W_PHP_Root, W_PHP_Root, W_PHP_Root], name='call_py_func')
 @jit.unroll_safe
