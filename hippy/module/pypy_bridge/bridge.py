@@ -315,9 +315,11 @@ def call_py_func(interp, w_func_or_w_name, w_args, w_kwargs):
                 assert isinstance(w_method_func, W_PyMethodFuncAdapter)
                 w_py_func = w_method_func.get_wrapped_py_obj()
                 w_self = w_class_name_or_inst.to_py(interp)
-    elif isinstance(w_func_or_w_name, W_PyFuncAdapter):
-        # a callable python instance object
-        w_py_func = w_func_or_w_name.w_py_func
+    elif isinstance(w_func_or_w_name, W_PHP_Root):
+        # maybe a python callable
+        w_py_func = w_func_or_w_name.get_wrapped_py_obj()
+        if w_py_func is None:
+            _raise_php_bridgeexception(interp, "Not a Python callable")
     else:
         _raise_php_bridgeexception(interp, "Invalid argument to call_py_func")
 

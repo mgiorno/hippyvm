@@ -430,7 +430,7 @@ class TestPyPyBridgeExceptions(BaseTestInterpreter):
                 echo $e->getMessage();
             }
         ''')
-        assert php_space.str_w(output[0]) == "Failed to find Python function or method"
+        assert php_space.str_w(output[0]) == "Method is not a static Python method"
 
     def test_except_kwarg_from_php3(self, php_space):
         output = self.run('''
@@ -442,7 +442,7 @@ class TestPyPyBridgeExceptions(BaseTestInterpreter):
                 echo $e->getMessage();
             }
         ''')
-        assert php_space.str_w(output[0]) == "Invalid argument to call_py_func"
+        assert php_space.str_w(output[0]) == "Not a Python callable"
 
     def test_except_kwarg_from_php4(self, php_space):
         output = self.run('''

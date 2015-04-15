@@ -291,6 +291,9 @@ class W_PyFuncAdapter(W_InstanceObject):
     def get_identifier(self):
         return self.w_py_callable.name.lower()
 
+    def get_wrapped_py_obj(self):
+        return self.w_py_func
+
 k_PyFuncAdapter = def_class('PyFunc', [])
 
 def new_embedded_py_func(interp, w_py_func):

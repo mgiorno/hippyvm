@@ -1348,6 +1348,35 @@ class TestPyPyBridge(BaseTestInterpreter):
         assert php_space.str_w(output[5]) == "abc"
         assert php_space.str_w(output[6]) == "jkl"
 
+    def test_kwarg_from_php7(self, php_space):
+        output = self.run('''
+            $src = <<<EOD
+            def mk():
+                class F(object):
+                    def __call__(self, a="a", b="b", c="c"):
+                          return a + b + c
+                return F()
+            EOD;
+            embed_py_func_global($src);
+
+            $f = mk();
+
+            echo call_py_func($f, [], ["a" => "z"]);
+            echo call_py_func($f, ["z"], ["c" => "o"]);
+            echo call_py_func($f, [], ["a" => "x", "b" => "y", "c" => "z"]);
+            echo call_py_func($f, [], ["b" => "y", "c" => "z", "a" => "x"]);
+            echo call_py_func($f, ["o", "p"], ["c" => "z"]);
+            echo call_py_func($f, [], []);
+            echo call_py_func($f, ["j", "k", "l"], []);
+        ''')
+        assert php_space.str_w(output[0]) == "zbc"
+        assert php_space.str_w(output[1]) == "zbo"
+        assert php_space.str_w(output[2]) == "xyz"
+        assert php_space.str_w(output[3]) == "xyz"
+        assert php_space.str_w(output[4]) == "opz"
+        assert php_space.str_w(output[5]) == "abc"
+        assert php_space.str_w(output[6]) == "jkl"
+
     def test_new_on_py_class(self, php_space):
         output = self.run('''
             $mod = import_py_mod("__builtin__");
