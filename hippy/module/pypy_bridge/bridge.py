@@ -210,7 +210,7 @@ def _find_static_py_meth(interp, class_name, meth_name):
     if w_php_kls is not None:
         # We found a PHP class of the correct name, lookup method.
         ctx_kls = interp.get_contextclass()
-        meth = w_php_kls.locate_method(meth_name, ctx_kls, True)
+        meth = w_php_kls.locate_method(meth_name, ctx_kls, check_visibility=True)
         if meth is None:
             return None
         elif not isinstance(meth.method_func, W_PyMethodFuncAdapter):
