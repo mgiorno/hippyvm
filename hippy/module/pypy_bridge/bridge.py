@@ -208,11 +208,15 @@ def _find_static_py_meth(interp, class_name, meth_name):
     # First look in PHP scope for a class of this name
     w_php_kls = interp.lookup_class_or_intf(class_name)
     if w_php_kls is not None:
-        # We found a PHP class of the correct name.
+        # We found a PHP class of the correct name, lookup method.
         ctx_kls = interp.get_contextclass()
-        meth = w_php_kls.locate_static_method(meth_name, ctx_kls, True)
-        if meth is None or not isinstance(meth.method_func, W_PyMethodFuncAdapter):
-            return None # XXX separate out case that the func is a PHP method
+        meth = w_php_kls.locate_method(meth_name, ctx_kls, True)
+        if meth is None:
+            return None
+        elif not isinstance(meth.method_func, W_PyMethodFuncAdapter):
+            _raise_php_bridgeexception(interp, "Method is not a static Python method")
+        elif not meth.is_static():
+            _raise_php_bridgeexception(interp, "Python method is not static")
         else:
             return meth.method_func.get_wrapped_py_obj()
     else:

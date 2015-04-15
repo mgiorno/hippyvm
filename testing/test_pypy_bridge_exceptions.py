@@ -572,6 +572,40 @@ class TestPyPyBridgeExceptions(BaseTestInterpreter):
         err_s = "Keyword arguments should be passed as associative arrays"
         assert php_space.str_w(output[0]) == err_s
 
+    def test_except_kwarg_from_php12(self, php_space):
+        output = self.run('''
+            class A {
+                function a() {} // not in Python
+            };
+
+            try {
+                call_py_func('A::a', [], []);
+                echo "fail";
+            } catch (BridgeException $e) {
+                echo $e->getMessage();
+            }
+        ''')
+        err_s = "Method is not a static Python method"
+        assert php_space.str_w(output[0]) == err_s
+
+    def test_except_kwarg_from_php13(self, php_space):
+        output = self.run('''
+            class A {
+            };
+
+            $src = 'def a(): pass'; // not static
+            embed_py_meth("A", $src);
+
+            try {
+                call_py_func('A::a', [], []);
+                echo "fail";
+            } catch (BridgeException $e) {
+                echo $e->getMessage();
+            }
+        ''')
+        err_s = "Python method is not static"
+        assert php_space.str_w(output[0]) == err_s
+
     def test_unbound_meth_too_no_self(self, php_space):
         output = self.run('''
         {
